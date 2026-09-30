@@ -1,0 +1,40 @@
+A few things I would clarify with Product:
+
+1. What should "recently" mean for this feature?
+
+For this exercise, I use the recent public activity returned by GitHub's user events API. If a specific time window or the full available recent history is required, I would adjust the retrieval accordingly.
+
+
+2. When we say the "3 most common event types", do we want GitHub's raw event types (PushEvent, PullRequestEvent, IssueCommentEvent, etc.), or more user-friendly activity categories such as commits/pushes, pull requests, comments, and merges?
+
+I chose the latter because it matches the examples in the ticket more closely. Given the wider set of possible GitHub events, I think the mapping of specific event types into activity categories should ideally be confirmed with Product.
+
+
+3. Are the event types listed in the ticket examples meant to be exhaustive, or just examples?
+
+I treated them as examples and also included other development-related activity such as reviews, issues, creates, deletes, and releases.
+
+
+4. What exactly should count as having "contributed to" a repository?
+
+I excluded activity such as starring and forking a repository because those do not necessarily represent development work on that repository.
+
+
+5. For PushEvent activity, should one push count as one activity occurrence, or should the individual commits within the push be counted separately?
+
+I count the PushEvent itself as one occurrence. If the requirement is to count individual commits instead, that would require inspecting commit-level data rather than treating each push as a single activity event.
+
+
+6. For repository ownership, should "owned by the user" mean only repositories directly under that user's GitHub account, or should organization-owned repositories where the user is a member also count?
+
+I currently treat only repositories directly owned by the user's account as owned.
+
+
+7. Should the result show only the three most common activity types, or also show how many times each occurred?
+
+I included the counts because they make the ranking easier to understand and verify, but the output could be simplified to only the activity names if that is the preferred presentation.
+
+
+8. If multiple activity types have the same count around the third-place cutoff, should all tied types be shown, or should the output always be limited to exactly three?
+
+I currently limit the result to three, following the wording of the ticket.

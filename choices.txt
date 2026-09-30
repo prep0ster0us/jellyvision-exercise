@@ -1,0 +1,123 @@
+Implementation choices and assumptions
+
+1. I used GitHub's public user events endpoint as the source of recent activity.
+
+The ticket is specifically about recent public GitHub activity and notes that authentication is not required for this endpoint.
+
+For this exercise I make a single request for the user's recent events. If the feature needed to cover a larger or explicitly defined activity window, I would add pagination and potentially authenticated requests depending on the expected usage and GitHub rate limits.
+
+
+2. I grouped GitHub's raw event types into more readable activity categories.
+
+GitHub returns event names such as PushEvent, PullRequestEvent, and IssueCommentEvent, while the ticket describes activity as commits, pull requests, comments, and merges.
+
+I added get_activity_type() as a translation layer so the rest of the application works with activity categories rather than GitHub-specific event names. I used an AI coding assistant while brainstorming the initial event-to-category mapping and considering related GitHub event types and edge cases. I reviewed the resulting mapping and selected the categories used in the implementation based on my interpretation of the ticket. The mapping is intentionally easy to expand or change once the expected activity taxonomy is confirmed with Product.
+
+A simpler alternative would have been to count the raw event type strings directly, but that would not represent merges separately and would produce output that is less aligned with the terminology in the ticket.
+
+
+3. I treat a merged pull request separately from other pull request activity.
+
+GitHub does not expose "merge" as its own top-level event type. A merge appears as a PullRequestEvent whose action is "closed" AND whose pull_request.merged value is true.
+
+I therefore inspect that payload and classify those events as "merges". I have considered that a pull request that is closed without being merged should remain as pull request activity.
+
+
+4. I count activity events rather than trying to derive a different unit from each event.
+
+Each accepted GitHub event contributes one count to its activity category. In particular, a PushEvent is counted once even though the push may contain multiple commits.
+
+I use the label "commits/pushes" to make that distinction visible rather than suggesting that the displayed number is an exact commit count.
+
+If Product wanted the number of individual commits instead, I would inspect the push payload and use an endpoint designed specifically for retrieving commit data.
+
+
+5. I treated the activity types listed in the ticket as examples rather than an exhaustive list.
+
+In addition to pushes, pull requests, comments, and merges, I included development-related activity such as reviews, issues, create/delete activity, and releases.
+
+This avoids silently ignoring meaningful repository activity simply because it was not one of the examples in the ticket.
+
+The exact list would ideally be confirmed with Product because what counts as useful "engineering activity" is a product decision rather than purely a technical one, and the mapping can be updated accordingly.
+
+
+6. I use an allow-list for events that count as repository contributions.
+
+CONTRIBUTION_EVENT_TYPES explicitly defines the event types included in the analysis. Activities such as WatchEvent and ForkEvent are excluded because it is assumed that starring or forking a repository does not necessarily mean the user contributed work back to that repository.
+
+I preferred an allow-list over accepting every GitHub event because new or unrelated public activity should not automatically change the meaning of this report. As a generic fallback for unmapped event names so the classification function remains defensive if it is reused or the allow-list is expanded later. In the current analysis flow, events outside CONTRIBUTION_EVENT_TYPES are filtered before classification.
+
+7. I used defaultdict(Counter) to aggregate activity by repository.
+
+The data naturally has two levels: repository -> activity type -> count.
+
+defaultdict avoids repeatedly checking whether a repository has already been encountered, while Counter directly represents frequency counts.
+
+The same result could be implemented with normal dictionaries and manual increment logic, but defaultdict(Counter) expresses the intended data structure more directly and keeps the aggregation code small.
+
+
+8. I return the three most common activity categories using Counter.most_common(3).
+
+Counter already maintains frequency counts, so most_common(3) directly represents the requirement to find the three most common activity types.
+
+If a repository has fewer than three activity categories, all available categories are shown.
+
+The ticket does not define a tie-breaking rule. Counter.most_common() therefore provides the ordering used by the current implementation. If deterministic tie handling were important to the consuming application, I would define an explicit secondary ordering rule.
+
+
+9. I include the activity counts in the output in addition to the activity names.
+
+The requirement only asks for the three most common types, so displaying counts is not strictly necessary.
+
+I included them because they explain why one activity ranks above another and make the result easier for a user to understand and verify.
+
+
+10. I determine direct repository ownership from the owner/repository name already present in the event.
+
+GitHub identifies repositories using names such as "username/repository". I compare the owner portion with the requested username using a case-insensitive comparison.
+
+This avoids making an additional API request for every repository.
+
+This implementation only means direct account ownership. It does not treat an organization repository as owned by the user simply because the user may belong to or administer that organization.
+
+
+11. I kept API access, classification, aggregation, ownership checking, and output as separate functions.
+
+Although the feature is small enough to remain in one Python module, separating these responsibilities keeps the main flow simple and makes the feature-specific logic easier to test independently.
+
+I chose not to introduce additional classes, service layers, or packages because they would add structure without providing much value for the size of this exercise.
+
+
+12. I used argparse for the username.
+
+The ticket uses a specific username as an example, but the feature describes behavior for a GitHub user in general. A positional command-line argument keeps the program reusable while still making it simple to run:
+
+python github_activity.py ge0ffrey
+
+A future application could expose the same analysis through an API or UI without changing the core analysis functions. An alternative could be reading in the username explicitly when the program runs, or reading it from a pre-existing file.
+
+
+13. I added basic defensive handling around GitHub responses and event data.
+
+A missing user produces a clearer ValueError, a 403 response produces a message that points toward GitHub rejecting the request or rate limiting, and other HTTP failures are delegated to requests.raise_for_status().
+
+Event payloads and repository fields are also accessed defensively because API data should not cause the whole analysis to fail solely because an optional nested value is missing.
+
+In a larger production service I would likely add structured error handling, logging, retry/backoff behavior for transient failures, and explicit rate-limit handling.
+
+
+14. I added a focused unit test suite rather than exhaustive integration testing.
+
+The tests cover the behavior most closely tied to the ticket: event classification, merge detection, grouping/counting by repository, filtering non-contribution activity, repository ownership, selecting the top three activities, successful API retrieval, and a basic API error case.
+
+GitHub requests are mocked in the unit tests so the test suite does not depend on internet access, current GitHub activity, or API rate limits.
+
+I intentionally kept the test suite focused given the size and timebox of the exercise. A production version could add broader edge-case coverage and integration tests against the GitHub API.
+
+15. I used an AI coding assistant as part of the development process.
+
+I used AI assistance primarily to brainstorm interpretations of ambiguous requirements, explore the GitHub event-to-activity mapping, identify potential edge cases, review portions of the implementation, suggest focused unit-test scenarios, and help refine the project documentation.
+
+I reviewed and adapted the suggestions before including them in the solution, and the final implementation decisions and assumptions are documented in this file and questions.txt. I also validated the behavior through the included test suite and by reviewing how each part of the implementation works.
+
+I treated the AI assistant as a development aid rather than as the source of product requirements. Where the ticket was ambiguous, I documented the ambiguity and made an explicit implementation choice rather than assuming the suggested interpretation was a confirmed requirement.
