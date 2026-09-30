@@ -7,6 +7,7 @@ username = "ge0ffrey"
 # categorize events into commits, PRs, comments and merges
 def get_activity_type(event):
     event_type = event.get("type", "")
+    payload = event.get("payload") or {}
 
     # Map specific event types to clean categories
     mapping = {
@@ -24,6 +25,13 @@ def get_activity_type(event):
 
     # Return mapped value (if it exists)
     if event_type in mapping:
+        # explicitly flag merge events (from broader PR event)
+        if event_type == 'PullRequestEvent':
+            pull_request = payload.get("pull_request") or {}
+
+            if (payload.get("action") == "closed" or pull_request.get("merged") is True):
+                return "merges"
+                
         return mapping[event_type]
 
     # fallback for unmapped events
