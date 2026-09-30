@@ -1,5 +1,5 @@
 import requests
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 # sample username
 username = "ge0ffrey"
@@ -19,4 +19,10 @@ for event in response.json():
     events_by_repo[repo_name].append(event["type"])
 
 for repo_name, event_types in events_by_repo.items():
-    print(repo_name, event_types)
+    event_counts = Counter(event_types)
+    top_three = event_counts.most_common(3)     # by count/frequency
+
+    print(repo_name)
+
+    for pos, (event_type, count) in enumerate(top_three, start=1):
+        print(f"\t{pos}. {event_type}: {count}")
