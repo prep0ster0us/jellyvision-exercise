@@ -63,7 +63,7 @@ def get_activity_type(event):
         if event_type == 'PullRequestEvent':
             pull_request = payload.get("pull_request") or {}
 
-            if (payload.get("action") == "closed" or pull_request.get("merged") is True):
+            if (payload.get("action") == "closed" and pull_request.get("merged") is True):
                 return "merges"
                 
         return mapping[event_type]
