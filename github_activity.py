@@ -1,8 +1,43 @@
 import requests
 from collections import Counter, defaultdict
+from typing import Any
 
 # sample username
 username = "ge0ffrey"
+GITHUB_API_URL = "https://api.github.com"
+# restrict events that count as contributing to a repository
+# assumption: starring or forking a repository shouldn't count as contribution
+CONTRIBUTION_EVENT_TYPES = {
+    "PushEvent",
+    "PullRequestEvent",
+    "PullRequestReviewEvent",
+    "PullRequestReviewCommentEvent",
+    "IssueCommentEvent",
+    "CommitCommentEvent",
+    "IssuesEvent",
+    "CreateEvent",
+    "DeleteEvent",
+    "ReleaseEvent",
+    # documentations lists events by General activity, Issue and Timeline
+}
+
+def fetch_public_events(username: str) -> list[dict[str, Any]]:
+    url = f"{GITHUB_API_URL}/users/{username}/events/public"
+    response = requests.get(url, timeout=10)
+
+    if response.status_code == 404:
+        raise ValueError(f"github user '{username}' was not found")
+
+    if response.status_code == 403:
+        raise RuntimeError(
+            "github rejected the request\n"
+            "possibly because the unauthenticated api rate limit was reached"
+        )
+
+    # raise exception for failed request
+    response.raise_for_status()
+
+    return response.json()
 
 # categorize events into commits, PRs, comments and merges
 def get_activity_type(event):
@@ -45,53 +80,58 @@ def user_owns_repo(username, repo_name):
 
     return owner.casefold() == username.casefold()
 
+def analyze_events(
+    events: list[dict[str, Any]],
+) -> dict[str, Counter[str]]:
+    repo_activity: dict[str, Counter[str]] = defaultdict(Counter)
 
-response = requests.get(
-    f"https://api.github.com/users/{username}/events/public",
-    timeout=10,
-)
-# raise exception for failed request
-response.raise_for_status()
+    for event in events:
+        if event.get("type") not in CONTRIBUTION_EVENT_TYPES:
+            continue
 
-# if valid response, view events
-events = response.json()
-events_by_repo = defaultdict(list)
-# restrict events that count as contributing to a repository
-# assumption: starring or forking a repository shouldn't count as contribution
-CONTRIBUTION_EVENT_TYPES = {
-    "PushEvent",
-    "PullRequestEvent",
-    "PullRequestReviewEvent",
-    "PullRequestReviewCommentEvent",
-    "IssueCommentEvent",
-    "CommitCommentEvent",
-    "IssuesEvent",
-    "CreateEvent",
-    "DeleteEvent",
-    "ReleaseEvent",
-    # documentations lists events by General activity, Issue and Timeline
-}
+        repo = event.get("repo") or {}
+        repo_name = repo.get("name")
 
-for event in events:
-    if event.get("type") not in CONTRIBUTION_EVENT_TYPES:
-        continue
-    repo = event.get("repo") or {}
-    repo_name = repo.get("name")
+        if not repo_name:
+            continue
 
-    if not repo_name:
-        continue
+        activity_type = get_activity_type(event)
+        repo_activity[repo_name][activity_type] += 1
 
-    activity_type = get_activity_type(event)
-    events_by_repo[repo_name].append(activity_type)
+    return dict(repo_activity)
+
+def print_results(
+    username: str,
+    repo_activity: dict[str, Counter[str]],
+) -> None:
+    if not repo_activity:
+        print(f"No recent public contribution activity found for '{username}'.")
+        return
+
+    print(f"Recent public GitHub activity for {username}\n")
+
+    for repo_name in sorted(repo_activity):
+        activity_counts = repo_activity[repo_name]
+        top_three = activity_counts.most_common(3)      # by count/frequency
+        owned = "yes" if user_owns_repo(username, repo_name) else "no"
+
+        print(repo_name)
+        print(f"owned by user: {owned}")
+
+        for pos, (activity_type, count) in enumerate(top_three, start=1):
+            print(f"\t{pos}. {activity_type}: {count}")
 
 
-for repo_name, activity_types in events_by_repo.items():
-    event_counts = Counter(activity_types)
-    top_three = event_counts.most_common(3)     # by count/frequency
-    owned = "yes" if user_owns_repo(username, repo_name) else "no"
+def main() -> None:
+    username = "ge0ffrey"
 
-    print(repo_name)
-    print(f"owned by user: {owned}")
+    try:
+        events = fetch_public_events(username)
+        repo_activity = analyze_events(events)
+        print_results(username, repo_activity)
 
-    for pos, (activity_type, count) in enumerate(top_three, start=1):
-        print(f"\t{pos}. {activity_type}: {count}")
+    except (ValueError, RuntimeError, requests.RequestException) as error:
+        print(f"Error: {error}")
+
+if __name__ == "__main__":
+    main()
