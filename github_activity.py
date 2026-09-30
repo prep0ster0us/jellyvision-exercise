@@ -37,6 +37,15 @@ def get_activity_type(event):
     # fallback for unmapped events
     return event_type.removesuffix("Event").lower() or "unknown"
 
+def user_owns_repo(username, repo_name):
+    if "/" not in repo_name:
+        return False
+
+    owner, _ = repo_name.split("/", 1)
+
+    return owner.casefold() == username.casefold()
+
+
 response = requests.get(
     f"https://api.github.com/users/{username}/events/public",
     timeout=10,
@@ -79,8 +88,10 @@ for event in events:
 for repo_name, activity_types in events_by_repo.items():
     event_counts = Counter(activity_types)
     top_three = event_counts.most_common(3)     # by count/frequency
+    owned = "yes" if user_owns_repo(username, repo_name) else "no"
 
     print(repo_name)
+    print(f"owned by user: {owned}")
 
     for pos, (activity_type, count) in enumerate(top_three, start=1):
         print(f"\t{pos}. {activity_type}: {count}")
