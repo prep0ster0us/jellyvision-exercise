@@ -47,9 +47,31 @@ response.raise_for_status()
 # if valid response, view events
 events = response.json()
 events_by_repo = defaultdict(list)
+# restrict events that count as contributing to a repository
+# assumption: starring or forking a repository shouldn't count as contribution
+CONTRIBUTION_EVENT_TYPES = {
+    "PushEvent",
+    "PullRequestEvent",
+    "PullRequestReviewEvent",
+    "PullRequestReviewCommentEvent",
+    "IssueCommentEvent",
+    "CommitCommentEvent",
+    "IssuesEvent",
+    "CreateEvent",
+    "DeleteEvent",
+    "ReleaseEvent",
+    # documentations lists events by General activity, Issue and Timeline
+}
 
 for event in events:
-    repo_name = event["repo"]["name"]
+    if event.get("type") not in CONTRIBUTION_EVENT_TYPES:
+        continue
+    repo = event.get("repo") or {}
+    repo_name = repo.get("name")
+
+    if not repo_name:
+        continue
+
     activity_type = get_activity_type(event)
     events_by_repo[repo_name].append(activity_type)
 
