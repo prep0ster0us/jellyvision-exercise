@@ -23,3 +23,23 @@ Optionally, create a virtual environment:
 
 ```bash
 python -m venv .venv
+```
+
+## Usage
+
+Run the program by providing a GitHub username as a positional argument:
+
+```bash
+python github_activity.py ge0ffrey
+```
+
+## Tests
+Run the unit test suite with:
+```bash
+pytest
+```
+
+For more detailed output:
+```bash
+pytest -v
+```
