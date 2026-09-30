@@ -1,4 +1,5 @@
 import requests
+from collections import defaultdict
 
 # sample username
 username = "ge0ffrey"
@@ -11,6 +12,11 @@ response = requests.get(
 response.raise_for_status()
 
 # if valid response, view events
-# print(response.json()[0])
+events_by_repo = defaultdict(list)
+
 for event in response.json():
-    print(event["type"], event["repo"]["name"])
+    repo_name = event["repo"]["name"]
+    events_by_repo[repo_name].append(event["type"])
+
+for repo_name, event_types in events_by_repo.items():
+    print(repo_name, event_types)
