@@ -3,8 +3,6 @@ from collections import Counter, defaultdict
 from typing import Any
 import argparse
 
-# sample username
-username = "ge0ffrey"
 GITHUB_API_URL = "https://api.github.com"
 # restrict events that count as contributing to a repository
 # assumption: starring or forking a repository shouldn't count as contribution
@@ -124,7 +122,6 @@ def print_results(
 
 
 def main() -> None:
-    username = "ge0ffrey"
     parser = argparse.ArgumentParser(
         description="Show a GitHub user's recent public repository activity."
     )
@@ -138,7 +135,7 @@ def main() -> None:
     try:
         events = fetch_public_events(args.username)
         repo_activity = analyze_events(events)
-        print_results(username, repo_activity)
+        print_results(args.username, repo_activity)
 
     except (ValueError, RuntimeError, requests.RequestException) as error:
         print(f"Error: {error}")
