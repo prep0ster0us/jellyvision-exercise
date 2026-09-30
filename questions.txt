@@ -2,7 +2,7 @@ A few things I would clarify with Product:
 
 1. What should "recently" mean for this feature?
 
-For this exercise, I use the recent public activity returned by GitHub's user events API.
+For this exercise, I use the recent public activity returned by GitHub's user events API. If a specific time window or the full available recent history is required, I would adjust the retrieval accordingly.
 
 
 2. When we say the "3 most common event types", do we want GitHub's raw event types (PushEvent, PullRequestEvent, IssueCommentEvent, etc.), or more user-friendly activity categories such as commits/pushes, pull requests, comments, and merges?

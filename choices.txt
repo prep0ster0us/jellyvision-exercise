@@ -11,7 +11,7 @@ For this exercise I make a single request for the user's recent events. If the f
 
 GitHub returns event names such as PushEvent, PullRequestEvent, and IssueCommentEvent, while the ticket describes activity as commits, pull requests, comments, and merges.
 
-I added get_activity_type() as a translation layer so the rest of the application works with activity categories rather than GitHub-specific event names. I have assumed a sample mapping for the events:category, which can be expanded or updated as per need.
+I added get_activity_type() as a translation layer so the rest of the application works with activity categories rather than GitHub-specific event names. I used an AI coding assistant while brainstorming the initial event-to-category mapping and considering related GitHub event types and edge cases. I reviewed the resulting mapping and selected the categories used in the implementation based on my interpretation of the ticket. The mapping is intentionally easy to expand or change once the expected activity taxonomy is confirmed with Product.
 
 A simpler alternative would have been to count the raw event type strings directly, but that would not represent merges separately and would produce output that is less aligned with the terminology in the ticket.
 
@@ -29,7 +29,7 @@ Each accepted GitHub event contributes one count to its activity category. In pa
 
 I use the label "commits/pushes" to make that distinction visible rather than suggesting that the displayed number is an exact commit count.
 
-If Product wanted the number of individual commits instead, I would either inspect the push payload, use an endpoint designed specifically for commit data, or defer to register CommitCommentEvent as a trigger for an individual commit.
+If Product wanted the number of individual commits instead, I would inspect the push payload and use an endpoint designed specifically for retrieving commit data.
 
 
 5. I treated the activity types listed in the ticket as examples rather than an exhaustive list.
@@ -45,8 +45,7 @@ The exact list would ideally be confirmed with Product because what counts as us
 
 CONTRIBUTION_EVENT_TYPES explicitly defines the event types included in the analysis. Activities such as WatchEvent and ForkEvent are excluded because it is assumed that starring or forking a repository does not necessarily mean the user contributed work back to that repository.
 
-I preferred an allow-list over accepting every GitHub event because new or unrelated public activity should not automatically change the meaning of this report. As a fallback, we register an otherwise unknown event based on its name if it does not match any of the mapped types.
-
+I preferred an allow-list over accepting every GitHub event because new or unrelated public activity should not automatically change the meaning of this report. As a generic fallback for unmapped event names so the classification function remains defensive if it is reused or the allow-list is expanded later. In the current analysis flow, events outside CONTRIBUTION_EVENT_TYPES are filtered before classification.
 
 7. I used defaultdict(Counter) to aggregate activity by repository.
 
@@ -114,3 +113,11 @@ The tests cover the behavior most closely tied to the ticket: event classificati
 GitHub requests are mocked in the unit tests so the test suite does not depend on internet access, current GitHub activity, or API rate limits.
 
 I intentionally kept the test suite focused given the size and timebox of the exercise. A production version could add broader edge-case coverage and integration tests against the GitHub API.
+
+15. I used an AI coding assistant as part of the development process.
+
+I used AI assistance primarily to brainstorm interpretations of ambiguous requirements, explore the GitHub event-to-activity mapping, identify potential edge cases, review portions of the implementation, suggest focused unit-test scenarios, and help refine the project documentation.
+
+I reviewed and adapted the suggestions before including them in the solution, and the final implementation decisions and assumptions are documented in this file and questions.txt. I also validated the behavior through the included test suite and by reviewing how each part of the implementation works.
+
+I treated the AI assistant as a development aid rather than as the source of product requirements. Where the ticket was ambiguous, I documented the ambiguity and made an explicit implementation choice rather than assuming the suggested interpretation was a confirmed requirement.
