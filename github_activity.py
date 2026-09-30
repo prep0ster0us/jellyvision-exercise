@@ -1,6 +1,7 @@
 import requests
 from collections import Counter, defaultdict
 from typing import Any
+import argparse
 
 # sample username
 username = "ge0ffrey"
@@ -124,9 +125,18 @@ def print_results(
 
 def main() -> None:
     username = "ge0ffrey"
+    parser = argparse.ArgumentParser(
+        description="Show a GitHub user's recent public repository activity."
+    )
+    parser.add_argument(
+        "username",
+        help="GitHub username to inspect",
+    )
+
+    args = parser.parse_args()
 
     try:
-        events = fetch_public_events(username)
+        events = fetch_public_events(args.username)
         repo_activity = analyze_events(events)
         print_results(username, repo_activity)
 
